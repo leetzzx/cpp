@@ -5,7 +5,7 @@ kbdcros.out: kbdcros.cpp
 macrokeys.out: macrokeys.cpp
 	g++ macrokeys.cpp -o macrokeys.out -pthread
 test.out: test.c
-	gcc test.c -o test.out
+	gcc test.c -o test.out -lpthread
 .PHONY:clean
 clean:
 	rm *.out -rf
