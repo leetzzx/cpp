@@ -86,7 +86,8 @@ struct stdrawkeynode
 
 struct rawlink
 {
-  
+  int len = 0;
+  int currlen = 0;
   struct stdrawkeynode * head;
   struct stdrawkeynode * curr;
   struct stdrawkeynode * tail;
@@ -128,7 +129,7 @@ static RawNode * getrawnode(int position , RawLink *RawLink);
 static void print_rawmacro(RawLink *RawLink);
 // I don't know why here cant use RawLink as second argument
 
-static bool ismacroempty(RawNode *head);
+static bool ismacroempty(RawNode RawLink);
 static void insertrawnode(int position, RawNode *node, RawNode *head);
 static bool vali_insertrawnode(int position, RawNode *node, RawLink *Rawlink);
 static int rsimulate_macro (ComplxNode * head);
@@ -369,7 +370,8 @@ RawNode * getrawnode(int position, RawLink *RawLink) {
 
 
 
-bool ismacroempty(RawNode *head){
+bool ismacroempty(RawLink RawLink){
+  RawNode *head = RawLink.head;
   if(head->next == NULL) {
     return true;
   }
@@ -380,7 +382,8 @@ bool ismacroempty(RawNode *head){
 
 void print_rawmacro(RawLink *RawLink) {
   int i = 0;
-  if(ismacroempty(head)){
+  RawNode *head = RawLink->head;
+  if(ismacroempty(*RawLink)){
     perror("This is an empty macro list");
   }
   else{
@@ -412,7 +415,7 @@ bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink){
       RawLink->tail = node;
     }
     // this is used to update tail node
-     nodeA = getrawnode(position-1, RawLink->head);
+     nodeA = getrawnode(position-1, RawLink);
   }
   node->next = nodeA->next;
   nodeA->next = node;
@@ -480,7 +483,8 @@ int main()
   node2 = (RawNode *)malloc(sizeof(RawNode));
   node2->kcode = 48;
   node1->kcode = 58;
-
+  vali_insertrawnode(1, node1, &Link);
+  vali_insertrawnode(2, node2, &Link);
   RawNode * node_1 = getrawnode(1, &Link);
   RawNode * node_2 = getrawnode(2, &Link);
   printf("\n Num.1 node's kcode is %d", node_1->kcode);
