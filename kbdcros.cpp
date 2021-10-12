@@ -126,6 +126,7 @@ static int keycombcounter(ComplxNode *head);
 // counter for how many key binding in standard sequence
 static bool initrawlink(RawLink *RawLink);
 static void destrawlink(RawLink *RawLink);
+static void resetposlink(RawLink *RawLink);
 static RawNode * getrawnode(int position , RawLink *RawLink);
 static void print_rawmacro(RawLink *RawLink);
 // I don't know why here cant use RawLink as second argument
@@ -133,6 +134,9 @@ static void print_rawmacro(RawLink *RawLink);
 static bool ismacroempty(RawLink RawLink);
 static void insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink);
+static void deleterawnode(int position, RawNode *node, RawLink *RawLink);
+static bool vali_deleterawnode(int position, RawLink *RawLink);
+
 static int rsimulate_macro (ComplxNode * head);
 static void simacro_once(ComplxNode **head);
 // because for rawmacro there is no need to use recursive loop to
@@ -373,6 +377,11 @@ void destrawlink(RawLink *RawLink) {
   }
 }
 
+void resetposlink(RawLink *RawLink){
+  RawLink->curr = RawLink->head;
+  RawLink->currlen = 0;
+}
+
 RawNode * getrawnode(int position, RawLink *RawLink) {
   int i = 0;
   RawNode * node = RawLink->head;
@@ -402,6 +411,7 @@ void print_rawmacro(RawLink *RawLink) {
   }
   else{
     printf("There are %d rawkeys in macro, current node is at %d\n", RawLink->len,RawLink->currlen);
+    printf("Tail information: code %d, val %d\n", RawLink->tail->kcode,RawLink->tail->kval);
     while(head->next!=NULL)
       {
 	i++;
@@ -416,7 +426,7 @@ void print_rawmacro(RawLink *RawLink) {
 void insertrawnode(int position, RawNode *node, RawLink *RawLink) {
   // because if we simply use gui to insert a node into macro, there
   // is no need to test for whether position is valid or not
-  int len = rawkeycounter(RawLink->head);
+  int len = RawLink->len;
   RawNode * nodeA;
   if(position==len+1){
     RawLink->tail = node;
@@ -447,6 +457,24 @@ bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink){
   return true;
 }
 
+bool vali_deleterawnode(int position, RawLink *RawLink){
+  int len = rawkeycounter(RawLink->head);
+  if( position>len || position<=0) {
+    perror("Please don't delete a node that does't exist");
+    return false;
+  }
+  else{
+    RawNode *before = getrawnode(position-1, RawLink);
+    RawNode *after = before->next;
+    if(position == len) {
+      RawLink->tail = before;
+    }
+    before->next = after->next;
+    RawLink->len--;
+    free(after);
+    return true;
+  }
+}
 
 int rsimulate_macro (ComplxNode * head){
   ComplxNode *node = head;
@@ -522,14 +550,15 @@ int main()
   node1->kval = 1;
   node2->kval = 0;
 
-  appendnode(node1, &Link);
-  RawNode *tail1 = Link.tail;
+  insertrawnode(1, node1, &Link);
   sirawmacro_once(&Link);
-  printf("For now tail's code is %d, val is %d\n", tail1->kcode,tail1->kval);
+  print_rawmacro(&Link);
   appendnode(node2, &Link);
-  RawNode *tail2 = Link.tail;
   sirawmacro_once(&Link);
-  printf("For now tail's code is %d, val is %d\n", tail2->kcode,tail2->kval);
+  print_rawmacro(&Link);
+  resetposlink(&Link);
+  vali_deleterawnode(1, &Link);
+  vali_deleterawnode(1, &Link);
   print_rawmacro(&Link);
   destrawlink(&Link);
   // sleep(2);
