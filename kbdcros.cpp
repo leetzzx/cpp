@@ -86,11 +86,11 @@ struct stdrawkeynode
 
 struct rawlink
 {
-  int len = 0;
+  int len=0;
   int currlen = 0;
-  struct stdrawkeynode * head;
-  struct stdrawkeynode * curr;
-  struct stdrawkeynode * tail;
+  struct stdrawkeynode * head= NULL;
+  struct stdrawkeynode * curr= NULL;
+  struct stdrawkeynode * tail= NULL;
 };
 
 int macro_num; // this value stores how many macros in application
@@ -129,17 +129,17 @@ static RawNode * getrawnode(int position , RawLink *RawLink);
 static void print_rawmacro(RawLink *RawLink);
 // I don't know why here cant use RawLink as second argument
 
-static bool ismacroempty(RawNode RawLink);
-static void insertrawnode(int position, RawNode *node, RawNode *head);
-static bool vali_insertrawnode(int position, RawNode *node, RawLink *Rawlink);
+static bool ismacroempty(RawNode *head);
+static void insertrawnode(int position, RawNode *node, RawLink *RawLink);
+static bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static int rsimulate_macro (ComplxNode * head);
 static void simacro_once(ComplxNode **head);
 // because for rawmacro there is no need to use recursive loop to
 // simulate macro, So I did't write that function
-static void sirawmacro_once(RawNode **cirr);
+static void sirawmacro_once(RawNode **curr);
 static char* getkey(RawNode *node);
 static char* getcombination(RawNode *node);
-static bool appenednode(RawNode *rear);
+static void appendnode(RawNode *node, RawLink *RawLink);
 
 /* FUNCTIONS IMPLEMENTATIONS */
 void reader_init() {
@@ -349,7 +349,9 @@ int keycombcounter(ComplxNode * head){
 }
 
 bool initrawlink(RawLink *RawLink) {
-  RawLink->head = RawLink->tail = (RawNode *)malloc(sizeof(RawNode));
+ RawLink->head  = (RawNode *)malloc(sizeof(RawNode));
+ RawLink->curr =  RawLink->head;
+ RawLink->tail = RawLink->head;
   if(!RawLink){
     return false;
   }
@@ -370,8 +372,8 @@ RawNode * getrawnode(int position, RawLink *RawLink) {
 
 
 
-bool ismacroempty(RawLink RawLink){
-  RawNode *head = RawLink.head;
+bool ismacroempty(RawLink *RawLink){
+  RawNode *head = RawLink->head;
   if(head->next == NULL) {
     return true;
   }
@@ -383,10 +385,11 @@ bool ismacroempty(RawLink RawLink){
 void print_rawmacro(RawLink *RawLink) {
   int i = 0;
   RawNode *head = RawLink->head;
-  if(ismacroempty(*RawLink)){
+  if(ismacroempty(RawLink)){
     perror("This is an empty macro list");
   }
   else{
+    printf("There are %d rawkeys in macro, current node is at %d\n", RawLink->len,RawLink->currlen);
     while(head->next!=NULL)
       {
 	i++;
@@ -401,7 +404,16 @@ void print_rawmacro(RawLink *RawLink) {
 void insertrawnode(int position, RawNode *node, RawLink *RawLink) {
   // because if we simply use gui to insert a node into macro, there
   // is no need to test for whether position is valid or not
-  
+  int len = rawkeycounter(RawLink->head);
+  RawNode * nodeA;
+  if(position==len+1){
+    RawLink->tail = node;
+  }
+  // this is used to update tail node
+  nodeA = getrawnode(position-1, RawLink);
+  node->next = nodeA->next;
+  nodeA->next = node;
+  RawLink->len++;
 }
 
 bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink){
@@ -419,6 +431,7 @@ bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink){
   }
   node->next = nodeA->next;
   nodeA->next = node;
+  RawLink->len++;
   return true;
 }
 
@@ -459,6 +472,12 @@ char* getkey(RawNode *node) {
   return meaning;
 }
 
+void appendnode(RawNode *node,RawLink *RawLink) {
+  RawLink->tail->next = node;
+  RawLink->tail = node;
+  RawLink->len++;
+}
+
 int main()
 {
   
@@ -481,12 +500,19 @@ int main()
   RawNode * node2;
   node1 = (RawNode *)malloc(sizeof(RawNode));
   node2 = (RawNode *)malloc(sizeof(RawNode));
-  node2->kcode = 48;
-  node1->kcode = 58;
-  vali_insertrawnode(1, node1, &Link);
+  node2->kcode =KEY_1;
+  node1->kcode = KEY_1;
+  node1->kval = 1;
+  node2->kval = 0;
+  insertrawnode(1, node1, &Link);
   vali_insertrawnode(2, node2, &Link);
+  simulate_rawevent(node1);
+  simulate_rawevent(node2);
   RawNode * node_1 = getrawnode(1, &Link);
   RawNode * node_2 = getrawnode(2, &Link);
+  print_rawmacro(&Link);
+  sirawmacro_once(&Link.curr);
+  sirawmacro_once(&Link.curr);
   printf("\n Num.1 node's kcode is %d", node_1->kcode);
   printf("\n Num.2 node's kcode is %d", node_2->kcode);
   // sleep(2);
