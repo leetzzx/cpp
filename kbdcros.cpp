@@ -489,6 +489,10 @@ void appendnode(RawNode *node,RawLink *RawLink) {
   RawLink->tail->next = node;
   RawLink->tail = node;
   RawLink->len++;
+  node->next = NULL;
+  // I don't understand why it makes an error if I remove last one
+  // line although I have initialize RawNode.next into NULL. I have to
+  // initialize it to NULL again, It is strange
 }
 
 int main()
@@ -518,11 +522,11 @@ int main()
   node1->kval = 1;
   node2->kval = 0;
 
-  insertrawnode(1, node1, &Link);
+  appendnode(node1, &Link);
   RawNode *tail1 = Link.tail;
   sirawmacro_once(&Link);
   printf("For now tail's code is %d, val is %d\n", tail1->kcode,tail1->kval);
-  insertrawnode(2, node2, &Link);
+  appendnode(node2, &Link);
   RawNode *tail2 = Link.tail;
   sirawmacro_once(&Link);
   printf("For now tail's code is %d, val is %d\n", tail2->kcode,tail2->kval);
