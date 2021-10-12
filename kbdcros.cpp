@@ -129,14 +129,14 @@ static RawNode * getrawnode(int position , RawLink *RawLink);
 static void print_rawmacro(RawLink *RawLink);
 // I don't know why here cant use RawLink as second argument
 
-static bool ismacroempty(RawNode *head);
+static bool ismacroempty(RawLink *RawLink);
 static void insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static int rsimulate_macro (ComplxNode * head);
 static void simacro_once(ComplxNode **head);
 // because for rawmacro there is no need to use recursive loop to
 // simulate macro, So I did't write that function
-static void sirawmacro_once(RawNode **curr);
+static void sirawmacro_once(RawLink *RawLink);
 static char* getkey(RawNode *node);
 static char* getcombination(RawNode *node);
 static void appendnode(RawNode *node, RawLink *RawLink);
@@ -456,10 +456,11 @@ void simacro_once(ComplxNode **head) {
 }
 
 
-void sirawmacro_once(RawNode **curr) {
-  RawNode ** node = curr;
+void sirawmacro_once(RawLink *RawLink) {
+  RawNode ** node = &RawLink->curr;
   *node = (** node).next;
   simulate_rawevent(*node);
+  RawLink->currlen++;
   //  return head;
 }
 // this function is used for latter gui application, and then
@@ -504,17 +505,17 @@ int main()
   node1->kcode = KEY_1;
   node1->kval = 1;
   node2->kval = 0;
+
   insertrawnode(1, node1, &Link);
-  vali_insertrawnode(2, node2, &Link);
-  simulate_rawevent(node1);
-  simulate_rawevent(node2);
-  RawNode * node_1 = getrawnode(1, &Link);
-  RawNode * node_2 = getrawnode(2, &Link);
+  RawNode *tail1 = Link.tail;
+  sirawmacro_once(&Link);
+  printf("For now tail's code is %d, val is %d\n", tail1->kcode,tail1->kval);
+  insertrawnode(2, node2, &Link);
+  RawNode *tail2 = Link.tail;
+  sirawmacro_once(&Link);
+  printf("For now tail's code is %d, val is %d\n", tail2->kcode,tail2->kval);
   print_rawmacro(&Link);
-  sirawmacro_once(&Link.curr);
-  sirawmacro_once(&Link.curr);
-  printf("\n Num.1 node's kcode is %d", node_1->kcode);
-  printf("\n Num.2 node's kcode is %d", node_2->kcode);
+
   // sleep(2);
   //cleanup();
   return 0;
