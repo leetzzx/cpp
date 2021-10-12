@@ -125,11 +125,12 @@ static int rawkeycounter(RawNode *head);
 static int keycombcounter(ComplxNode *head);
 // counter for how many key binding in standard sequence
 static bool initrawlink(RawLink *RawLink);
+static void destrawlink(RawLink *RawLink);
 static RawNode * getrawnode(int position , RawLink *RawLink);
 static void print_rawmacro(RawLink *RawLink);
 // I don't know why here cant use RawLink as second argument
 
-static bool ismacroempty(RawLink *RawLink);
+static bool ismacroempty(RawLink RawLink);
 static void insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static int rsimulate_macro (ComplxNode * head);
@@ -361,6 +362,17 @@ bool initrawlink(RawLink *RawLink) {
   }
 }
 
+void destrawlink(RawLink *RawLink) {
+  ismacroempty(*RawLink);
+  RawNode * node;
+  RawNode * head = RawLink->head;
+  while(head!=NULL){
+    node= head;
+    head= head->next;
+    free(node);
+  }
+}
+
 RawNode * getrawnode(int position, RawLink *RawLink) {
   int i = 0;
   RawNode * node = RawLink->head;
@@ -372,8 +384,8 @@ RawNode * getrawnode(int position, RawLink *RawLink) {
 
 
 
-bool ismacroempty(RawLink *RawLink){
-  RawNode *head = RawLink->head;
+bool ismacroempty(RawLink RawLink){
+  RawNode *head = RawLink.head;
   if(head->next == NULL) {
     return true;
   }
@@ -385,7 +397,7 @@ bool ismacroempty(RawLink *RawLink){
 void print_rawmacro(RawLink *RawLink) {
   int i = 0;
   RawNode *head = RawLink->head;
-  if(ismacroempty(RawLink)){
+  if(ismacroempty(*RawLink)){
     perror("This is an empty macro list");
   }
   else{
@@ -515,7 +527,7 @@ int main()
   sirawmacro_once(&Link);
   printf("For now tail's code is %d, val is %d\n", tail2->kcode,tail2->kval);
   print_rawmacro(&Link);
-
+  destrawlink(&Link);
   // sleep(2);
   //cleanup();
   return 0;
