@@ -52,7 +52,9 @@ enum {Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8};
 /* STRUCT and VARIABLE */
 static int keys_fd = -1;
 static int uinput_fd = -1;
+static FILE * macrofile;
 static char keymap[250][18];
+static char directory[20] = "./macros/"; 
 // because the longest string in file has 17 char, but when testing
 // ,the latter index seems not important. In valgrind test
 // program, neithor 12 nor 18 will make a memory leak [todo]
@@ -80,7 +82,7 @@ struct stdrawkeynode
   // int ktype;
   int kval=0; // press or release
   int kcode=0; // which key to simulate
-  long ntime;
+  long ntime=500000;
   struct stdrawkeynode *next = NULL;
 };
 
@@ -91,6 +93,7 @@ struct rawlink
   struct stdrawkeynode * head= NULL;
   struct stdrawkeynode * curr= NULL;
   struct stdrawkeynode * tail= NULL;
+  char name[100];
 };
 
 int macro_num; // this value stores how many macros in application
@@ -105,6 +108,7 @@ static void uinput_init();
 static void init_all();
 // init functions
 static void loadkeymap();
+static bool startmap(char *macroname);
 static void uinput_dest();
 static void cleanfd();
 
@@ -116,6 +120,8 @@ static void sendevent();  // as inline function, because they only
 static void emitevent(int kval, int kcode);
 static void keysync();
 static void * readkeys(void * arg);
+static void * recordkeys(void * arg);
+static void * makelink(void * arg);
 
 static void normal_simulate_key(int kcode);
 static void simulate_keysegment(int keyseg[8]);
@@ -125,7 +131,8 @@ static int rawkeycounter(RawNode *head);
 static int keycombcounter(ComplxNode *head);
 // counter for how many key binding in standard sequence
 static bool initrawlink(RawLink *RawLink);
-static void destrawlink(RawLink *RawLink);
+static void freerawlink(RawLink *RawLink);
+static bool writelink(RawLink RawLink);
 static void resetposlink(RawLink *RawLink);
 static RawNode * getrawnode(int position , RawLink *RawLink);
 static void print_rawmacro(RawLink *RawLink);
@@ -274,6 +281,68 @@ void *readkeys(void * arg) {
   return arg;
 }
 
+void * recordkeys(void * arg) {
+  char  macroname[100];
+  printf("Please input one name for macro recording\n");
+  scanf("%s", macroname);
+  char * macrofp = strcat(directory, macroname);
+  printf("the file you want to write in is %s\n", macrofp); 
+  startmap(macrofp);
+  usleep(10000000);
+  // In terminal, here is a problem is that when First keyevent
+  // arrived, its status always be released. because you always need
+  // to press ENTER to get name for file
+  while (1)  
+    {
+      arg = NULL;
+      if (read (keys_fd, &event, sizeof (event)) == sizeof (event))  
+        {  
+          if (event.type == EV_KEY)
+	    {
+	      if (event.code == KEY_ESC){
+		exit(1);
+		fclose(macrofile);
+	      }
+	      fprintf(macrofile, "%s %d %d\n",keymap[event.code], event.code,event.value);
+	    }  
+	}
+    }
+  return arg;
+}
+
+void * makelink(void * arg) {
+  RawLink * Link2 = (RawLink *) arg;
+  macrofile = fopen(Link2->name, "w+");
+  while (1)  
+    {
+      clock_t start = clock();
+      arg = NULL;
+      if (read (keys_fd, &event, sizeof (event)) == sizeof (event))  
+        {
+	  clock_t time =clock();
+          if (event.type == EV_KEY)
+	    {
+	      if (event.code == KEY_ESC){
+		print_rawmacro(Link2);
+		writelink(*Link2);
+		freerawlink(Link2);
+		exit(1);
+	      }
+	      else{
+		printf ("key %s %s\n", keymap[event.code],(event.value) ? "Pressed" : "Released");
+		RawNode * a = (RawNode *)malloc(sizeof(RawNode));
+		a->kcode = event.code;
+		a->kval = event.value;
+		a->ntime = time-start;
+		//fprintf(macrofile, "key %s %s\n", keymap[a->kcode],(a->kval) ? "Pressed" : "Released");
+		appendnode(a, Link2);
+	      }
+	    }  
+	}
+    }
+  return NULL;
+}
+
 
 void keysync() {
   event.type = EV_SYN;  
@@ -287,10 +356,19 @@ void loadkeymap() {
   int i = 0;
   while((fscanf(fp, "%d %s",  &i, keymap[i])) != EOF)
     {
-      printf("num:%d stands for %s\n", i,keymap[i]);
+      // printf("num:%d stands for %s\n", i,keymap[i]);
       i++;       
     }
   fclose(fp);
+}
+
+bool startmap(char *macroname) {
+  if((fopen(macroname,"w") == NULL)) {
+    return false;
+  }
+  else {
+    return true;
+  }
 }
 
 void normal_simulate_key(int kcode)  
@@ -354,9 +432,9 @@ int keycombcounter(ComplxNode * head){
 }
 
 bool initrawlink(RawLink *RawLink) {
- RawLink->head  = (RawNode *)malloc(sizeof(RawNode));
- RawLink->curr =  RawLink->head;
- RawLink->tail = RawLink->head;
+  RawLink->head  = (RawNode *)malloc(sizeof(RawNode));
+  RawLink->curr =  RawLink->head;
+  RawLink->tail = RawLink->head;
   if(!RawLink){
     return false;
   }
@@ -366,8 +444,9 @@ bool initrawlink(RawLink *RawLink) {
   }
 }
 
-void destrawlink(RawLink *RawLink) {
-  ismacroempty(*RawLink);
+void freerawlink(RawLink *RawLink) {
+  // ismacroempty(*RawLink); justify if a link is empty or not is
+  // unnessary.
   RawNode * node;
   RawNode * head = RawLink->head;
   while(head!=NULL){
@@ -375,6 +454,24 @@ void destrawlink(RawLink *RawLink) {
     head= head->next;
     free(node);
   }
+}
+
+bool writelink(RawLink RawLink) {
+  RawNode *head = RawLink.head;
+  char  macroname[100];
+  strcpy(macroname, RawLink.name);
+  char * macrofp = strcat(directory, macroname);
+  // printf("the file you want to write in is %s\n", macrofp); 
+  macrofile = fopen(macrofp, "w+");
+  fprintf(macrofile, "[%s %d]\n",RawLink.name,RawLink.len);
+  while(head->next!=NULL){
+    head = head->next;
+    fprintf(macrofile, "%s %d %d\n", keymap[head->kcode], head->kcode, head->kval);
+  }
+  // In terminal, here is a problem is that when First keyevent
+  // arrived, its status always be released. because you always need
+  // to press ENTER to get name for file
+  return true;
 }
 
 void resetposlink(RawLink *RawLink){
@@ -449,7 +546,7 @@ bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink){
       RawLink->tail = node;
     }
     // this is used to update tail node
-     nodeA = getrawnode(position-1, RawLink);
+    nodeA = getrawnode(position-1, RawLink);
   }
   node->next = nodeA->next;
   nodeA->next = node;
@@ -526,41 +623,49 @@ void appendnode(RawNode *node,RawLink *RawLink) {
 int main()
 {
   
-  
-  //  keys_fd = open("/dev/input/event3", O_RDWR);
-  //loadkeymap();
+  keys_fd = open("/dev/input/event3", O_RDWR);
+  loadkeymap();
   // uinput_fd = keys_fd;
-  // pthread_t tid;
-  // reader_init();
-  // tid = pthread_self();
-  // int err;
-  // err = pthread_create(&tid, NULL, readkeys, NULL);
-  /* this thread dont use a cleanup program so there is a leak which
-     is about 272 bytes */
-  uinput_fd = open("/dev/input/event3", O_RDWR);
+  //reader_init();
+  
+  pthread_t tid;
+  tid = pthread_self();
+  int err;
   RawLink Link;
   initrawlink(&Link);
-  print_rawmacro(&Link);
-  RawNode * node1;
-  RawNode * node2;
-  node1 = (RawNode *)malloc(sizeof(RawNode));
-  node2 = (RawNode *)malloc(sizeof(RawNode));
-  node2->kcode =KEY_1;
-  node1->kcode = KEY_1;
-  node1->kval = 1;
-  node2->kval = 0;
+  strcpy(Link.name,"myfirstma");
 
-  insertrawnode(1, node1, &Link);
-  sirawmacro_once(&Link);
-  print_rawmacro(&Link);
-  appendnode(node2, &Link);
-  sirawmacro_once(&Link);
-  print_rawmacro(&Link);
-  resetposlink(&Link);
-  vali_deleterawnode(1, &Link);
-  vali_deleterawnode(1, &Link);
-  print_rawmacro(&Link);
-  destrawlink(&Link);
+  // RawNode *node1 = (RawNode *) malloc(sizeof(RawNode));
+  // RawNode *node2 = (RawNode *) malloc(sizeof(RawNode));
+  //  node1->kcode = KEY_0;
+  //  node2->kcode = KEY_0;
+  //  node1->kval = 1;
+  //  node2->kval = 0;
+  //  node1->ntime= node2->ntime = 500000;
+   // appendnode(node1, &Link);
+   //appendnode(node2, &Link);
+  // macrofile = fopen("myfirstma", "w+");
+   //print_rawmacro(&Link);
+  // RawNode *head = Link.head;
+  // while(head->next!=NULL){
+  //   head = head->next;
+  //   fprintf(macrofile, "%s %d %d\n", keymap[head->kcode],head->kcode, head->kval);
+  // }
+  void * arg2 = (void*) &Link;
+  err = pthread_create(&tid, NULL, makelink, arg2);
+  /*  this thread dont use a cleanup program so there is a leak which
+      is about 272 bytes */
+  // uinput_fd = open("/dev/input/event3", O_RDWR);
+
+  // print_rawmacro(&Link);
+  sleep(20);
+  // print_rawmacro(&Link);
+  // resetposlink(&Link);
+  // vali_deleterawnode(1, &Link);
+  // vali_deleterawnode(1, &Link);
+  //print_rawmacro(&Link);
+  //  freerawlink(&Link);
+  //sleep(40);
   // sleep(2);
   //cleanup();
   return 0;
