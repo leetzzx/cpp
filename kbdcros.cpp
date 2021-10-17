@@ -147,6 +147,7 @@ static int keycombcounter(ComplxNode *head);
 // counter for how many key binding in standard sequence
 static bool initrawlink(RawLink *RawLink);
 static void freerawlink(RawLink *RawLink);
+static void cltimelink(RawLink *RawLink);
 static bool writelink(RawLink RawLink);
 static void resetposlink(RawLink *RawLink);
 static RawNode * getrawnode(int position , RawLink *RawLink);
@@ -366,6 +367,7 @@ void * makelink(void * arg) {
 	    {
 	      if (event.code == KEY_ESC){
 		print_rawmacro(Link2);
+		cltimelink(Link2);
 		writelink(*Link2);
 		freerawlink(Link2);
 		exit(1);
@@ -530,6 +532,16 @@ void freerawlink(RawLink *RawLink) {
     head= head->next;
     free(node);
   }
+}
+
+void cltimelink(RawLink *RawLink) {
+  RawNode * nodeA = RawLink->head->next;
+  RawNode * nodeB = nodeA;
+  while (nodeB->next!=NULL) {
+    nodeB = nodeB->next;
+    nodeB->ntime = nodeB->ntime - nodeA->ntime +100;
+  }
+  nodeA->ntime = 100;
 }
 
 bool writelink(RawLink RawLink) {
@@ -728,12 +740,11 @@ int main()
   strcpy(Link.name,"myfirstma");
   //void * arg1 = (void*) &Link;
   //pthread_create(&tid, NULL, gettimeindex, NULL);
-  //err = pthread_create(&tid2, NULL, mstimer, NULL);
+  err = pthread_create(&tid2, NULL, mstimer, NULL);
   //pthread_join(tid, NULL);
   void * arg1 = (void*) &Link;
-  
-  pthread_create(&tid3, NULL, loadlink, arg1);
-  sleep(2);
+  pthread_create(&tid3, NULL, makelink, arg1);
+  sleep(20);
 
   
 
