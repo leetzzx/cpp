@@ -372,7 +372,7 @@ void * makelink(void * arg) {
 	      }
 	      else{
 		// accounter = (long)mscounter/timeindex;
-		// mscounter = (end-start)/1000;
+		accounter = (end-start)/1000;
 		printf ("key %s %s %ld time\n", keymap[event.code],(event.value) ? "Pressed" : "Released", accounter);
 		RawNode * a = (RawNode *)malloc(sizeof(RawNode));
 		a->kcode = event.code;
@@ -393,20 +393,30 @@ void * loadlink(void * arg) {
   int mode;
   int kcode;
   int kval;
+  int ntime;
   char mean[21];
   char  macroname[100];
   strcpy(macroname, Link1->name);
+
   char * macrofp = strcat(directory, macroname);
+  printf("the file you want to read is %s\n", macrofp);
   // printf("the file you want to write in is %s\n", macrofp); 
-  macrofile = fopen(macrofp, "w+");
-  fscanf(macrofile, "[%s %d %d]", Link1->name,&len,&mode);
-  while((fscanf(macrofile, "%s %d %d",mean,  &kcode,  &kval))!=EOF){
-    RawNode *nodeA;
-    nodeA =(RawNode *) malloc(sizeof(RawNode));
-    nodeA->kcode = kcode;
-    nodeA->kval = kval;
-    appendnode(nodeA, Link1);
-  }
+  macrofile = fopen(macrofp, "r+");
+  fscanf(macrofile, "[%s %d %d]", mean, &len, &mode);
+  printf("%s %d %d", mean,len, mode);
+  while((fscanf(macrofile, "%s %d %d %d", mean, &kcode, &kval, &ntime))!=EOF)
+    {
+      RawNode *NodeA;
+      NodeA = (RawNode *)malloc(sizeof(RawNode));
+      NodeA->kcode = kcode;
+      NodeA->kval = kval;
+      NodeA->ntime = ntime;
+      appendnode(NodeA, Link1);
+    }
+  print_rawmacro(Link1);
+  // In terminal, here is a problem is that when First keyevent
+  // arrived, its status always be released. because you always need
+  // to press ENTER to get name for file
   return NULL;
 }
 
@@ -716,18 +726,17 @@ int main()
   RawLink Link;
   initrawlink(&Link);
   strcpy(Link.name,"myfirstma");
-  void * arg1 = (void*) &Link;
+  //void * arg1 = (void*) &Link;
   //pthread_create(&tid, NULL, gettimeindex, NULL);
-  err = pthread_create(&tid2, NULL, mstimer, NULL);
-  // pthread_join(tid, NULL);
+  //err = pthread_create(&tid2, NULL, mstimer, NULL);
+  //pthread_join(tid, NULL);
+  void * arg1 = (void*) &Link;
+  
+  pthread_create(&tid3, NULL, loadlink, arg1);
+  sleep(2);
 
   
-  pthread_create(&tid3, NULL, makelink, arg1);
 
-
-  
-  
-  sleep(200);
 // sleep(2);
   // printf("%ldms has gone\n", (end-start)/1000);
   /*  this thread dont use a cleanup program so there is a leak which
