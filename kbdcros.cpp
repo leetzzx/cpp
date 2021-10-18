@@ -294,6 +294,7 @@ void * gettimeindex(void * arg) {
   sleep(2);
   long c = mscounter;
   timeindex = (float)(c-b)/2000;
+  //printf("index is %f\n", timeindex);
   pthread_cancel(tindex);
   pthread_exit(NULL);
 }
@@ -373,7 +374,8 @@ void * makelink(void * arg) {
 		exit(1);
 	      }
 	      else{
-		// accounter = (long)mscounter/timeindex;
+		//accounter = (long)mscounter/timeindex;
+		//accounter = (long)mscounter;
 		accounter = (end-start)/1000;
 		printf ("key %s %s %ld time\n", keymap[event.code],(event.value) ? "Pressed" : "Released", accounter);
 		RawNode * a = (RawNode *)malloc(sizeof(RawNode));
@@ -535,11 +537,23 @@ void freerawlink(RawLink *RawLink) {
 }
 
 void cltimelink(RawLink *RawLink) {
+  RawNode * nodeA = RawLink->tail;
+  RawNode * nodeB = RawLink->head->next;
+  while (nodeB->next!=NULL) {
+    nodeB->ntime = nodeB->next->ntime - nodeB->ntime;
+    nodeB = nodeB->next;
+  }
+  nodeA->ntime = 0;
+}
+
+void vltimelink(RawLink *RawLink) {
   RawNode * nodeA = RawLink->head->next;
   RawNode * nodeB = nodeA;
+  long strtime;
   while (nodeB->next!=NULL) {
+    strtime = nodeB->next->ntime;
     nodeB = nodeB->next;
-    nodeB->ntime = nodeB->ntime - nodeA->ntime +100;
+    nodeB->ntime = nodeB->next->ntime - nodeA->ntime +100;
   }
   nodeA->ntime = 100;
 }
@@ -727,7 +741,7 @@ int main()
   
   keys_fd = open("/dev/input/event3", O_RDWR);
   loadkeymap();
-  // uinput_fd = keys_fd;
+  uinput_fd = keys_fd;
   //reader_init();
   //start = clock();
   pthread_t tid;
@@ -739,10 +753,11 @@ int main()
   initrawlink(&Link);
   strcpy(Link.name,"myfirstma");
   //void * arg1 = (void*) &Link;
-  //pthread_create(&tid, NULL, gettimeindex, NULL);
+  // pthread_create(&tid, NULL, gettimeindex, NULL);
+  // pthread_join(tid, NULL);
   err = pthread_create(&tid2, NULL, mstimer, NULL);
-  //pthread_join(tid, NULL);
   void * arg1 = (void*) &Link;
+  pthread_join(tid2, NULL);
   pthread_create(&tid3, NULL, makelink, arg1);
   sleep(20);
 
