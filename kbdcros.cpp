@@ -155,6 +155,7 @@ static void print_rawmacro(RawLink *RawLink);
 // I don't know why here cant use RawLink as second argument
 
 static bool ismacroempty(RawLink RawLink);
+static void cleankeys(RawLink RawLink);
 static void insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static bool vali_insertrawnode(int position, RawNode *node, RawLink *RawLink);
 static void deleterawnode(int position, RawLink *RawLink);
@@ -599,6 +600,26 @@ bool ismacroempty(RawLink RawLink){
   }
   else {
     return false;
+  }
+}
+
+void cleankeys(RawLink RawLink) {
+  int i =0;
+  RawNode *nodeA = RawLink.head;
+  if(RawLink.len > 250){
+    for(; i<250; i++){
+      emitevent(0, i);
+      keysync();
+      usleep(20);
+    }
+  }
+  else {
+    while(nodeA->next!=NULL) {
+      nodeA = nodeA->next;
+      nodeA->kval = 0;
+      simulate_rawevent(nodeA);
+      usleep(20);
+    }
   }
 }
 
