@@ -166,6 +166,8 @@ static void simacro_once(ComplxNode **head);
 // because for rawmacro there is no need to use recursive loop to
 // simulate macro, So I did't write that function
 static void sirawmacro_once(RawLink *RawLink);
+static void sirawlink(RawLink *RawLink);
+static void sirawlink_nowait(RawLink *RawLink);
 static char* getkey(RawNode *node);
 static char* getcombination(RawNode *node);
 static void appendnode(RawNode *node, RawLink *RawLink);
@@ -369,7 +371,7 @@ void * makelink(void * arg) {
 	    {
 	      if (event.code == KEY_ESC){
 		print_rawmacro(Link2);
-		cltimelink(Link2);
+		//cltimelink(Link2);
 		writelink(*Link2);
 		freerawlink(Link2);
 		exit(1);
@@ -741,6 +743,24 @@ void sirawmacro_once(RawLink *RawLink) {
 // construct a counter for gui to release user's curiosity, here I use
 // second level to revise pointer.
 
+void sirawlink(RawLink *RawLink) {
+  RawNode * nodeA = RawLink->head;
+  while (nodeA->next!=NULL) {
+    nodeA = nodeA->next;
+    emitevent(nodeA->kval, nodeA->kcode);
+    usleep(nodeA->ntime*1000);
+  }
+}
+
+void sirawlink_nowait(RawLink *RawLink) {
+  RawNode * nodeA = RawLink->head;
+  while (nodeA->next!=NULL) {
+    nodeA = nodeA->next;
+    emitevent(nodeA->kval, nodeA->kcode);
+    usleep(nodeA->ntime);
+  }
+}
+
 char* getkey(RawNode *node) {
   char * meaning;
   meaning = keymap[node->kcode];
@@ -776,11 +796,16 @@ int main()
   //void * arg1 = (void*) &Link;
   // pthread_create(&tid, NULL, gettimeindex, NULL);
   // pthread_join(tid, NULL);
-  err = pthread_create(&tid2, NULL, mstimer, NULL);
+  // err = pthread_create(&tid2, NULL, mstimer, NULL);
   void * arg1 = (void*) &Link;
-  pthread_join(tid2, NULL);
-  pthread_create(&tid3, NULL, makelink, arg1);
-  sleep(20);
+
+  
+  pthread_create(&tid3, NULL, loadlink, arg1);
+  pthread_join(tid3, NULL);
+  cltimelink(&Link);
+  sirawlink_nowait(&Link);
+  cleankeys(Link);
+  // sleep(20);
 
   
 
