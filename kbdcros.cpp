@@ -780,55 +780,71 @@ void appendnode(RawNode *node,RawLink *RawLink) {
   // initialize it to NULL again, It is strange
 }
 
-int main()
+int main(int argc, char *argv[])
 {
   
-  keys_fd = open("/dev/input/event3", O_RDWR);
   loadkeymap();
-  uinput_fd = keys_fd;
-  //reader_init();
-  //start = clock();
-  pthread_t tid;
-  pthread_t tid2;
-  pthread_t tid3;
-  tid = pthread_self();
+  int opt;
   int err;
+  char dmode;
   RawLink Link;
   initrawlink(&Link);
-  strcpy(Link.name,"myfirstma");
-  //void * arg1 = (void*) &Link;
-  // pthread_create(&tid, NULL, gettimeindex, NULL);
-  // pthread_join(tid, NULL);
-  // err = pthread_create(&tid2, NULL, mstimer, NULL);
-  void * arg1 = (void*) &Link;
-
-  
-  pthread_create(&tid3, NULL, loadlink, arg1);
-  pthread_join(tid3, NULL);
-  cltimelink(&Link);
-  sirawlink_nowait(&Link);
-  cleankeys(Link);
-  // sleep(20);
-
-  
-
-// sleep(2);
-  // printf("%ldms has gone\n", (end-start)/1000);
-  /*  this thread dont use a cleanup program so there is a leak which
-      is about 272 bytes */
-  // uinput_fd = open("/dev/input/event3", O_RDWR);
-  // print_rawmacro(&Link);
-
-  // print_rawmacro(&Link);
-  // resetposlink(&Link);
-  // vali_deleterawnode(1, &Link);
-  // vali_deleterawnode(1, &Link);
-  //print_rawmacro(&Link);
-  //  freerawlink(&Link);
-  //sleep(40);
-  // sleep(2);
-  //cleanup();
-
+  pthread_t tid1;
+  pthread_t tid2;
+  pthread_t tid3;
+  void * arg1 = (void *) &Link;
+  while ((opt=getopt(argc, argv, "lm:n:"))!=-1) {
+    switch (opt) {
+    case 'l': {
+      // list all macros in macro directory
+      return 0;
+      break;
+    }
+    case 'm': {
+      if(!strcmp("r", optarg)){
+	printf("record a keymacro\n");
+	printf("--------------------------\n");
+	dmode = 'r';
+      }
+      else if (!strcmp("s", optarg)){
+	printf("simulate a keymacro\n");
+	printf("--------------------------\n");
+	dmode = 's';
+      }
+      else {
+	perror("mode must be r for record or s for simulate");
+	return 0;
+      }
+      break;
+    }
+    case 'n': {
+      strcpy(Link.name, optarg);
+      break;
+    }
+    default:
+      break;
+    }
+  }
+  switch (dmode) {
+  case 'r': {
+    reader_init();
+    tid1 = pthread_self();
+    pthread_create(&tid1, NULL, gettimeindex, NULL);
+    pthread_join(tid1, NULL);
+    err = pthread_create(&tid2, NULL, mslooper, NULL);
+    pthread_create(&tid3, NULL, makelink, arg1);
+    sleep(20);
+    break;
+  }
+  case 's': {
+    uinput_init();
+    pthread_create(&tid1, NULL, loadlink, arg1);
+    pthread_join(tid1, NULL);
+    cltimelink(&Link);
+    sirawlink(&Link);
+    cleankeys(Link);
+    uinput_dest();
+  }
+  }
   return 0;
-
 }
