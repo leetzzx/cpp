@@ -1,0 +1,328 @@
+* goal 
+  - this program is aim to solve the imcompability caused by program
+    which is not adapted to touchscreen.
+  - and in another way, it can realise more functions if user does't
+    take keyboard with them in simple way or complex way
+* commands
+** show devices info
+ #+BEGIN_SRC bash
+ cat /proc/bus/input/devices
+ #+END_SRC
+** show handlers info
+  #+BEGIN_SRC bash
+  cat /proc/bus/input/handlers
+  #+END_SRC
+** query the group and owner of file
+   #+BEGIN_SRC bash
+   ls -lh
+   #+END_SRC
+** libs 
+   - wayland qt5 sys linux/input and so on
+   #+BEGIN_SRC bash 
+   sudo apt install libwayland-dev qt5-default 
+   #+END_SRC
+* struct
+  - input_event
+  #+BEGIN_SRC cpp
+  struct input_event {
+  struct timeval time;  //按键时间 
+  __u16 type; //事件类型 
+  __u16 code; //要模拟成什么按键 
+  __s32 value;//是按下还是释放 
+  };/
+  #+END_SRC
+  1. stdkeynode
+  2. stdcmplxkeynode
+     -  upper two kinds of keynode will consist of the processed queue
+       in simplified mode. In this mode, I supposed that two or more
+       keys which have overlay time to be a composite key that holds
+       for a period moutual time , so that I can simplify the whole
+       keymacros system which is consisted by rawkeynode queue, most
+       macros will perform properly, such as press CTRL-ShIFT-R and
+       then press CTRL-SHIFT-B, but the user may recording this macro
+       in the way that CTRL and SHIFT is not released for the whole
+       time. This worked in most cases because application don't take
+       action when CTRL-SHIFT is pressed, however If two normal key is
+       pressed together, then release one key and press another key,
+       simplified mode will take this stage into two steps because the
+       simplified mode is a queue transformed from real-simulate
+       mode's queue, then software macro running in may perform
+       differently and wrongly.
+* QT thread
+** variable for every widget
+   1. a head node for it's macro sequence
+   2. a backup node of node to run 
+* file
+** .mwm/mwm.rc or .mwm.rc
+   - this two files will contain most configuration in them. 
+** .mwm/keymacros/*.macro
+   - this file will contain all user's macros
+   - latter may use xml to realize the branch function because now
+     developing a tree node will delay the development cycle
+** /proc/bus/input/devices
+   - program will get information from it, and read events. There may
+     be other resolution. which can get events from keyboards.
+** /dev/uinput 
+   - a process which can create a virtual input device with specific
+     capabilities. once this virtual device is created. the process
+     can send events through it, that will be delivered to userspace
+     and in-kernel consumers.
+** keymap.map
+   - because /usr/include/linux/input-event-codes.h do not declare
+     some keys and their props, when I process it into keymap.map, and
+     write a function to parse it. Some thing wrong happened, to solve
+     it, I simply add two lines line 83 ,line 199 and another one line
+     249 which will have special meaning in my program.
+   - just add two useless in case that adding too much code in program
+   - If print all line with scanf will cause some bug, but it won't
+     disturb the true program.
+* TODO privilege
+** TODO add privilege management in module or user management
+   - because linux allow a user to load a module and driver, so we can
+     use linux way to promise the safety and closure
+   #+BEGIN_SRC bash
+   sudo chmod o+wr /dev/input/event3
+   #+END_SRC  
+   - create a exclusive device for stimulating macros, which may
+     assure the safety and system orderlity. more over we can just
+     create a specific user which is called mkmu. and we simply change
+     the user when mkm is running. Or run just like a daemon or
+     systemed process.
+   #+BEGIN_SRC bash
+   sudo usermod -a -G input targetuser
+   #+END_SRC
+** TODO System access into macrofiles
+   - Because manage a file available or not, pass it to bash is a
+     better way to manage raleted privileges
+** TODO add other two ways realise event access
+* TODO wishes
+** TODO backtrack is need for user's better experience
+   - in some environment, to record a more accurate keymacros, and
+     when user unfortunately press wrong key. backtrack for five or
+     more keys, and then continue to record is more rational and
+     precise, we can use an array to remember last 5 keys. Use the
+     same one MUTEX to deal with one macro's different
+     performation. when 5 keys all pressed, this five key will not be
+     recorded, and this will release MUTEX for keyreader to record
+     future keys.
+   - backtrack will use normal keys counter to find last five keys and
+     store them in array, counter is necessary
+   - backtrack will also add breakpoint into array, but it will
+     perform differently. when continue to record a macro, this use
+     new key event to overlay breakpoint.
+** TODO realise the daemon thread
+   - create a daemon to maintain all macros in background
+   - this may perform different with qt gui, qt may just need to load
+     fewer macro to ensure gui program to run, 
+** TODO realise the transform between key read and the standard form and the initial form 
+   - such as C-S-b means press ctrl and shift and b together
+   - but the normal sequence form that read from keyboard may be shift
+     ,ctrl and b. There need to be a judge to adjust the form.
+** TODO another form of recording keys 
+   - add interval between keys event, in this way, it can stimulate
+     accurate key stimulation to complete more complex functions. This
+     will assure the program's compability, if the standard form
+     stimulation does't work.
+   - time accuracy should be settable
+** TODO realise program's auto distinguish
+   - when recording a key macros in application, this should be able to
+     auto recongize which application key macro recording is in.
+   - more over we can write correct into configuration
+** TODO allow to record in a breakpoint
+   - when recording and not saved, this should provide an interface
+     for standard mode to record a key at middle and start recording
+     when press a key
+   - there should be a mutex for uinput write action, if mutex is not
+     available, when keymacros arrived a breakpoint, thread should not
+     release mutex, and only after a startup code was sent that mutex
+     will
+** TODO args
+*** mode select
+   - "-nt" which will start recording in standard way
+   - "-it" which will record key macro with time
+*** macro size specify
+    - "-s NUMBER" number means how many keys will be recorded default
+      will be within 20 keys in standard.
+    - if "-it" is specified, the memory will perform in different way,
+      which is greater than two times than standard mode
+*** miscellaneous
+    - "-l" list how many macros has been recorded
+    - "-p APP" show macros recorded for different applications which
+      is named by the applications' name
+      1. fixed: which will be fixed even if the focused windows has
+         changed
+      2. firefox: which will display when firefox is open
+      3. others like firefox
+** TODO record some key and(delete them) simulate a complex macro(method)
+   - maintain a phase with a length of 30 char, then compare it with
+     existed macros maps, when one is qualified, then do the
+     macro(method)
+   - input link
+** TODO function name need to revised
+   - some functions' name is not suitable
+** TODO [#A] plugin system is needed 
+   - plugin system will help user to build a more powerful macro using
+     available resources
+** TODO [#C] modes for recording a keymacro
+   - move left, stop recording, move right, continue to record
+   - move up, cancel recording
+   - modes should can be configured
+** TODO [#B] option to choose multi macro showed in different
+   - optimize for shift between different windows
+   - each window who get cursor will auto-change those macros
+     displayed on 
+** TODO [#B] hide all macros is necessary
+** TODO [#B] x11 support
+   - there may need to be two gui of mkm if we want to realise the
+     further function which allowes to revise macro in a more
+     beautiful way. I mean insert or change the macro after one
+     particular key among macro. although realise this function does't
+     need two kinds of display servers, just because wayland and xorg have
+     different way to react on keyboard event. so need different
+     libraries to do proper thing.
+   - x11 and wayland can be set by ENVIRONMENT VARIABLE like
+     XDG_WAYLAND or something like that
+** TODO [#C] allow to simulate simple scroll event
+   - this will halp to improve user's experience for browser up and
+     down more smothlly
+   - but due to the character of mouse, we just allow few mouse
+     events, and because mouse scroll is related to where cursor is,
+     this may won't perform properly, attation!
+** TODO [#C] four modes when touching 
+   - move down, do it once or with setted times.
+   - move up until release, simulate long press, only available for
+     there is only one event, and in strict mode, because some
+     keymacros are not suitable for long press. 
+   - move left, stop keymacros running.
+   - move right cancel keymacros.
+** TODO [#C] Allow to make branch to merge a new keymacro
+   - this allow user to use existing keymacros to make enclosure
+     without input new keymacro
+   - of course, we should offer option to combine new born keymacro
+     into keymacro file, this means it can be stored for future use
+** TODO [#C] allow to transform a normal string into macros
+   - this means we don't need to copy or paste, we use reduntant file
+     to store it.
+** DONE timer is needed
+   - sleep will stop clock recording
+   - test for how much lags will happened during program running, and
+     provide a fit way to show it.
+   - per 5ms, check whether the key event is arrived
+   - args should have next timepoint, and how long to check whether a
+     key event is needed
+   - cleanup program
+     1. set MUTEX to useable in case that macro is stoped or canceled
+     2. first check writable then send event
+     3. clock should be processed when stop or arrived a breakpoint,
+        so that continuation won't do something wrong. this point
+        should be considered again. Because it is noisy to get this
+        thing done
+     4. only this key is done that we can assign keyevent to next
+        keyevent. because I have decided that, stop a keymacro running
+        is to set this key, and cancel the thread. There are ways to
+        return where keymacro has been
+     5. In other way, clock_t should be considered seriously
+** DONE construct a struct to store key macros
+** DONE stimulate a key
+** DONE counter is needed 
+   - macro-counter will help to find how many macro is stored in file
+   - keys-counter will show how many keys has been recorded, this
+     counter will be used for backtrack also.
+   - except fixed counter for program statics, there should be a
+     counter for how many keys has been simulated, so that gui can
+     show the progress and lighten user's anxiety while waiting for
+     macro's end
+* TODO latter test
+** TODO test for short and long type's cost to store key_value
+** TODO whether unsighed int is necessary to store key_value
+* quotes
+  1. [[w3m:https://www.codedbearder.com/posts/writing-keyboard-remapper-wayland/][I wrote a keyboard remapper for wayland]]
+  2. [[w3m:http://blog.chinaunix.net/uid-20776117-id-3212095.html][linux input subsystem]]
+  3. [[w3m:https://blog.csdn.net/myarrow/article/details/12105973][uinput]]
+  4. [[w3m:https://01.org/linuxgraphics/gfx-docs/drm/input/uinput.html][uinput linux kernel]]
+  5. [[http://www.blogjava.net/xujian5566/articles/372135.html][c ms level timer]]
+  6. [[w3m:https://www.cnblogs.com/qingergege/p/5914218.html][getopt()]]
+* Dev Log 
+** uinput dev is needed
+   - when I try to write more than one key into /dev/input/event3, It
+     happened to break up my ubuntu's tweak for exchange Left_ctrl and
+     Caps, although after reboot, it recover again, this can cause big
+     problem when user use it.
+   - And if key is not released, this will make mouse out of order,
+     mouse will not move only if all keys are released properly. So
+     the clean-up procedure is necessary. such released all showed
+     keys again, this won't take two much time and resources.
+   - there are three different ways to clean all keys before we quit the
+     program. each has its own advantage and disadvantage
+     1. one is we just simply loop for RawLink, and set kval to 0,
+        then simulate it, because when we remove all duplicate keys,
+        we have make a loop, then do some operation.
+     2. Or we just release all 250 keys with a for loop.
+     3. we do this when makelink, and load duplicate Rawlink into
+        program. this will help to save time when we use keymacros for
+        one or several years
+   - Something important is that we must sleep for some seconds for
+     uinput_dev to initialize and destroy, so that event listening
+     won't go wrong.
+   - There is another problem. We can't read a key event from
+     uinput_dev.
+** timer 
+   - when I use time.h, clock() will record how much cpu clock_tick it
+     occupies
+   - but waiting and reading for a keyevent is system-call, so that
+     clock() will merge a wrong time to record how much time has gone.
+   - and other time function goes the same way, so I have to write a
+     function to
+   - msloop/index will cause a margin error about 4%
+** test and annotation
+    - during my developing test, although /dev/uinput is owned by root
+      user and root group, but under the normal user mode, Uinput
+      device is created normally, this means we don't need to do
+      according script for create a uinput device.
+    - when storing char[12] for keymap, 12 or 18 seems not important
+    - while I realize appendnode function, I have to reinit node's
+      next node into NULL, Otherwise print_rawmacro and destrawlink
+      will merge error for uninitialized judgement , this is a problem
+** linked list process
+   - during my latter test after timer is constructed, I found that
+     when a key is pressed for a long time about 250ms, it will send a
+     keyevent to /dev/input/event3 about every 30ms once, this means
+     if we have accounter with small margin of error, we may have the
+     ability to control how many alphabet will be printed by just
+     setting time of press and release
+   - move to function
+   - reduntant node remove function
+   - varify function
+   - different number for altering
+     1. move a key beyond its previous scope, this means a event is
+        moved to the front key or at the back of latter key, this may
+        cause problem
+     2. insert a keypress without release, this will cause cursor to
+        stop moving in some desktop environment
+     3. ...
+* Further music game
+** about reflection 
+   - we can produce more particle fx rely on how many and how long
+     keys are pressed, by this we can make a positive feedback, and
+     this happens to coincide with rhythm.
+   - but this creates a problem is that when user dont press, game
+     will be too gloomy, so we can do something to real-keys, when a
+     real-key has not been press for a short time, it will twinkle
+     with rhythm in other mode, and don't produce much particle fx in
+     order to take those who dont want play but just only want to
+     listen into consideration.
+** whether score（得分） is needed
+** what to offer 
+   1. score fx（谱面特效） and some setting
+      1) fire
+      2) ink
+      3) snow
+      4) water
+   2. score editor（谱面编辑器）
+   3. real-time editor(offer pause and start function)
+   4. enough
+   5. file system with score file and music file
+** what not to offer
+   1. cloud store
+   2. ranking list
+   3. 
