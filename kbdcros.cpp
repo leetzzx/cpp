@@ -27,6 +27,7 @@
 #include <sys/time.h>
 #include <sys/unistd.h>
 #include <stdio.h>
+#include <dirent.h>
 #include <signal.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -796,7 +797,25 @@ int main(int argc, char *argv[])
   while ((opt=getopt(argc, argv, "lm:n:"))!=-1) {
     switch (opt) {
     case 'l': {
+      struct dirent ** macro_list;
+      int count;
+      int i;
+      int z;
+      count = scandir(directory, &macro_list, 0, alphasort);
       // list all macros in macro directory
+      if(count < 0 ){
+	perror("scandir");
+	return EXIT_FAILURE;
+      }
+
+      printf("there are %d macros\n", count);
+      printf("--------------------------\n");
+      for(i = 0;i<count;i++) {
+	struct dirent *macro;
+	macro = macro_list[i];
+
+	printf("%i macro is %s\n", i, macro->d_name);
+      }
       return 0;
       break;
     }
