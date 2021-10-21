@@ -812,13 +812,17 @@ int main(int argc, char *argv[])
 	dmode = 's';
       }
       else {
-	perror("mode must be r for record or s for simulate");
+	perror("mode must be r for record or s for simulate\n");
 	return 0;
       }
       break;
     }
     case 'n': {
       strcpy(Link.name, optarg);
+      break;
+    }
+    case '?': {
+      perror("unknown option received\n");
       break;
     }
     default:
@@ -834,10 +838,12 @@ int main(int argc, char *argv[])
     err = pthread_create(&tid2, NULL, mslooper, NULL);
     pthread_create(&tid3, NULL, makelink, arg1);
     sleep(20);
+    close(keys_fd);
     break;
   }
   case 's': {
     uinput_init();
+    tid1 = pthread_self();
     pthread_create(&tid1, NULL, loadlink, arg1);
     pthread_join(tid1, NULL);
     cltimelink(&Link);
@@ -846,5 +852,6 @@ int main(int argc, char *argv[])
     uinput_dest();
   }
   }
+  freerawlink(&Link);
   return 0;
 }
