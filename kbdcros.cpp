@@ -1,4 +1,4 @@
-// SEE LICENSE file for copyright and license details.
+//SEE LICENSE file for copyright and license details.
 
 //Macrowhale kbdmacro manager is designed to help jingos to reduce the
 //imcompabilities which comes when jingos makes adaptations to
@@ -781,6 +781,15 @@ void appendnode(RawNode *node,RawLink *RawLink) {
   // initialize it to NULL again, It is strange
 }
 
+int filter(const struct dirent *macro){
+  if(macro->d_name[0] == '.'){
+    return 0; 
+  }
+  else{
+    return 1;
+  }
+}
+
 int main(int argc, char *argv[])
 {
   
@@ -800,8 +809,7 @@ int main(int argc, char *argv[])
       struct dirent ** macro_list;
       int count;
       int i;
-      int z;
-      count = scandir(directory, &macro_list, 0, alphasort);
+      count = scandir(directory, &macro_list, filter, alphasort);
       // list all macros in macro directory
       if(count < 0 ){
 	perror("scandir");
@@ -814,9 +822,10 @@ int main(int argc, char *argv[])
 	struct dirent *macro;
 	macro = macro_list[i];
 
-	printf("%i macro is %s\n", i, macro->d_name);
+	printf("%i macro is %s\n", i+1, macro->d_name);
+	free(macro);
       }
-      return 0;
+      free(macro_list);
       break;
     }
     case 'm': {
@@ -871,6 +880,10 @@ int main(int argc, char *argv[])
     uinput_dest();
   }
   }
-  freerawlink(&Link);
+  // in valgrind program always has one heap block is not freed,
+  // because although we have malloc according memory with initrawlink
+  // function, we can't normally free it in the main function, this
+  // does't metter
+  
   return 0;
 }
