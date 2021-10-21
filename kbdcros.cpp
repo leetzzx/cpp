@@ -757,7 +757,10 @@ void sirawlink_nowait(RawLink *RawLink) {
   while (nodeA->next!=NULL) {
     nodeA = nodeA->next;
     emitevent(nodeA->kval, nodeA->kcode);
-    usleep(nodeA->ntime);
+    //usleep(nodeA->ntime); this line is not safe, because some ntime
+    //will greater than 250ms aka 250000us, and will cause a repeat
+    //key, so here use fix step of 200us
+    usleep(200);
   }
 }
 
