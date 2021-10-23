@@ -149,6 +149,7 @@ static int keycombcounter(ComplxNode *head);
 static bool initrawlink(RawLink *RawLink);
 static void freerawlink(RawLink *RawLink);
 static void cltimelink(RawLink *RawLink);
+static void vltimelink(RawLink *RawLink);
 static bool writelink(RawLink RawLink);
 static void resetposlink(RawLink *RawLink);
 static RawNode * getrawnode(int position , RawLink *RawLink);
@@ -360,7 +361,7 @@ void * recordkeys(void * arg) {
 
 void * makelink(void * arg) {
   RawLink * Link2 = (RawLink *) arg;
-  macrofile = fopen(Link2->name, "w+");
+  //macrofile = fopen(Link2->name, "w+");
   while (1)  
     {
 
@@ -372,7 +373,7 @@ void * makelink(void * arg) {
 	    {
 	      if (event.code == KEY_ESC){
 		print_rawmacro(Link2);
-		//cltimelink(Link2);
+		vltimelink(Link2);
 		writelink(*Link2);
 		freerawlink(Link2);
 		exit(1);
@@ -380,7 +381,8 @@ void * makelink(void * arg) {
 	      else{
 		//accounter = (long)mscounter/timeindex;
 		//accounter = (long)mscounter;
-		accounter = (end-start)/1000;
+		//accounter = (end-start)/1000;
+		accounter = event.time.tv_sec*1000+event.time.tv_usec/1000;
 		printf ("key %s %s %ld time\n", keymap[event.code],(event.value) ? "Pressed" : "Released", accounter);
 		RawNode * a = (RawNode *)malloc(sizeof(RawNode));
 		a->kcode = event.code;
@@ -551,13 +553,11 @@ void cltimelink(RawLink *RawLink) {
 }
 
 void vltimelink(RawLink *RawLink) {
-  RawNode * nodeA = RawLink->head->next;
-  RawNode * nodeB = nodeA;
-  long strtime;
-  while (nodeB->next!=NULL) {
-    strtime = nodeB->next->ntime;
+ RawNode * nodeA = RawLink->head->next;
+  RawNode * nodeB = nodeA->next;
+  while (nodeB!=NULL) {
+    nodeB->ntime = nodeB->ntime - nodeA->ntime +100;
     nodeB = nodeB->next;
-    nodeB->ntime = nodeB->next->ntime - nodeA->ntime +100;
   }
   nodeA->ntime = 100;
 }
