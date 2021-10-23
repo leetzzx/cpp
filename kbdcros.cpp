@@ -61,7 +61,7 @@ static long accounter = 0;
 static float timeindex;
 static FILE * macrofile;
 static char keymap[250][18];
-static char directory[20] = "./macros/"; 
+static char directory[20] = "/home/"; 
 // because the longest string in file has 17 char, but when testing
 // ,the latter index seems not important. In valgrind test
 // program, neithor 12 nor 18 will make a memory leak [todo]
@@ -412,6 +412,10 @@ void * loadlink(void * arg) {
   printf("the file you want to read is %s\n", macrofp);
   // printf("the file you want to write in is %s\n", macrofp); 
   macrofile = fopen(macrofp, "r+");
+  if(macrofile == NULL){
+    printf("%s keymacro can't open\n", Link1->name);
+    exit(1);
+  }
   fscanf(macrofile, "[%s %d %d]", mean, &len, &mode);
   printf("%s %d %d", mean,len, mode);
   while((fscanf(macrofile, "%s %d %d %d", mean, &kcode, &kval, &ntime))!=EOF)
@@ -799,8 +803,10 @@ int main(int argc, char *argv[])
   char dmode;
   RawLink Link;
   initrawlink(&Link);
+  strcat(directory, getenv("USER"));
+  strcat(directory, "/macros/");
   pthread_t tid1;
-  pthread_t tid2;
+  //pthread_t tid2;
   pthread_t tid3;
   void * arg1 = (void *) &Link;
   while ((opt=getopt(argc, argv, "lm:n:"))!=-1) {
@@ -860,10 +866,10 @@ int main(int argc, char *argv[])
   switch (dmode) {
   case 'r': {
     reader_init();
-    tid1 = pthread_self();
-    pthread_create(&tid1, NULL, gettimeindex, NULL);
-    pthread_join(tid1, NULL);
-    err = pthread_create(&tid2, NULL, mslooper, NULL);
+    //tid1 = pthread_self();
+    //pthread_create(&tid1, NULL, gettimeindex, NULL);
+    //pthread_join(tid1, NULL);
+    //err = pthread_create(&tid2, NULL, mslooper, NULL);
     pthread_create(&tid3, NULL, makelink, arg1);
     sleep(20);
     close(keys_fd);
@@ -877,6 +883,7 @@ int main(int argc, char *argv[])
     cltimelink(&Link);
     sirawlink(&Link);
     cleankeys(Link);
+    freerawlink(&Link);
     uinput_dest();
   }
   }
