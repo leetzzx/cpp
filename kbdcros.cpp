@@ -836,7 +836,7 @@ int main(int argc, char *argv[])
     }
     case 'm': {
       if(!strcmp("r", optarg)){
-	printf("record a keymacro\n");
+	printf("record a keymacro, press ESC to end recording\n");
 	printf("--------------------------\n");
 	dmode = 'r';
       }
