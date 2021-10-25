@@ -8,7 +8,7 @@
 
 ### 运行命令
 
-1. `./kbdcros.out -mr -n macroname` 此命令会创建一个以macroname为文件名的存储键盘宏的文件
+1. `./kbdcros.out -mr -n macroname` 此命令会创建一个以macroname为文件名的存储键盘宏的文件，m代表模式，r代表record，s代表simulate，n代表name
 2. `./kbdcros.out -ms -n macroname` 此命令会实时模拟录制的键盘宏
 3. `./kbdcros.out -l` 列出已经录制好的键盘宏
 
